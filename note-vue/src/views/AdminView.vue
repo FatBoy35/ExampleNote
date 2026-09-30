@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
+import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 
 const form = ref({
   title: '',
@@ -17,23 +19,33 @@ async function saveContent() {
     saved.value = false
   }, 1200)
 }
+
+const summaryPreview = computed(() => {
+  if (!form.value.summary) return ''
+  return DOMPurify.sanitize(marked.parse(form.value.summary))
+})
+const previewFallback = '<p class="muted">（无预览）</p>'
 </script>
 
 <template>
   <div class="admin-shell">
     <div class="admin-panel">
-      <h1>后台管理</h1>
-      <p>新增/编辑 Java 知识点与示例代码</p>
+      <h1>内容管理</h1>
+      <p>新增或编辑知识项与示例</p>
 
       <form class="admin-form" @submit.prevent="saveContent">
         <label>
           <span>标题</span>
-          <input v-model="form.title" placeholder="例如：Java 变量与数据类型" />
+          <input v-model="form.title" placeholder="例：变量与类型" />
         </label>
         <label>
           <span>概述</span>
-          <textarea v-model="form.summary" placeholder="输入知识点概述" />
+          <textarea v-model="form.summary" placeholder="简要概述" />
         </label>
+        <div class="preview">
+          <div class="preview-title">预览</div>
+          <div class="preview-body" v-html="summaryPreview || previewFallback"></div>
+        </div>
         <label>
           <span>难度</span>
           <select v-model="form.difficulty">
@@ -44,12 +56,12 @@ async function saveContent() {
         </label>
         <label>
           <span>代码</span>
-          <textarea v-model="form.code" rows="10" placeholder="输入示例代码" />
+          <textarea v-model="form.code" rows="10" placeholder="示例代码" />
         </label>
-        <button type="submit">保存内容</button>
+        <button type="submit">保存</button>
       </form>
 
-      <div v-if="saved" class="success">保存成功</div>
+      <div v-if="saved" class="success">已保存</div>
     </div>
   </div>
 </template>
@@ -79,6 +91,13 @@ async function saveContent() {
   gap: 8px;
   font-weight: 600;
 }
+.preview {
+  background: #f8fafc;
+  padding: 12px;
+  border-radius: 8px;
+}
+.preview-title { font-weight: 700; margin-bottom: 8px }
+.preview-body { color: #0f172a }
 input,
 textarea,
 select,

@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, computed } from 'vue'
+import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 
 interface Language {
   id: number
@@ -101,7 +103,8 @@ function runJavaCode() {
   if (!activeExample.value) return
   const code = activeExample.value.code
 
-  output.value = `模拟执行结果：\n${code.trim().split('\n').slice(0, 8).join('\n')}\n\n输出：\n${activeExample.value.expectedOutput || 'Hello, Java!'}`
+  // show a concise preview and expected output
+  output.value = `${code.trim().split('\n').slice(0, 8).join('\n')}\n\n预期：${activeExample.value.expectedOutput || 'Hello, Java!'}`
 }
 
 onMounted(async () => {
@@ -113,6 +116,23 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+const selectedKnowledge = computed(() => knowledgePoints.value.find((item) => item.id === selectedKnowledgeId.value) ?? null)
+
+const renderedContent = computed(() => {
+  const md = selectedKnowledge.value?.contentMarkdown ?? ''
+  if (!md) return ''
+  const html = marked.parse(md)
+  return DOMPurify.sanitize(html)
+})
+
+const renderedSummary = computed(() => {
+  const sm = selectedKnowledge.value?.summary ?? ''
+  if (!sm) return ''
+  return DOMPurify.sanitize(marked.parse(sm))
+})
+
+const contentFallback = '<p class="muted">无内容</p>'
 </script>
 
 <template>
@@ -120,11 +140,11 @@ onMounted(async () => {
     <header class="topbar">
       <div>
         <div class="logo">Java Note</div>
-        <div class="subtitle">Java 学习站 · 代码示例 + 后台管理</div>
+        <div class="subtitle">Java 学习 · 示例</div>
       </div>
       <div class="top-actions">
         <span>Java</span>
-        <button>后台管理</button>
+        <button>管理</button>
       </div>
     </header>
 
@@ -156,7 +176,7 @@ onMounted(async () => {
       </aside>
 
       <section class="content">
-        <div v-if="loading" class="empty">加载中...</div>
+        <div v-if="loading" class="empty">加载中</div>
         <template v-else>
           <div class="knowledge-list">
             <div
@@ -177,13 +197,13 @@ onMounted(async () => {
               <span class="badge">{{ knowledgePoints.find((item) => item.id === selectedKnowledgeId)?.difficulty }}</span>
             </div>
             <div class="article-content">
-              <p>{{ knowledgePoints.find((item) => item.id === selectedKnowledgeId)?.summary }}</p>
-              <pre>{{ knowledgePoints.find((item) => item.id === selectedKnowledgeId)?.contentMarkdown || '暂无内容' }}</pre>
+              <div class="markdown-summary" v-html="renderedSummary"></div>
+              <div class="markdown-body" v-html="renderedContent || contentFallback"></div>
             </div>
           </div>
 
           <div class="editor-panel" v-if="examples.length > 0">
-            <div class="section-title">代码示例</div>
+            <div class="section-title">示例</div>
             <div class="example-tabs">
               <button
                 v-for="example in examples"
@@ -199,8 +219,8 @@ onMounted(async () => {
               <button class="run-btn" @click="runJavaCode">运行代码</button>
             </div>
             <div class="output-box">
-              <div class="output-title">运行结果</div>
-              <pre>{{ output || '点击运行代码查看效果' }}</pre>
+              <div class="output-title">结果</div>
+              <pre>{{ output || '运行查看' }}</pre>
             </div>
           </div>
         </template>
@@ -349,6 +369,29 @@ button {
   white-space: pre-wrap;
   overflow: auto;
 }
+.markdown-summary {
+  color: #374151;
+  margin-bottom: 12px;
+}
+.markdown-body {
+  background: #ffffff;
+  color: #0f172a;
+  padding: 18px;
+  border-radius: 12px;
+}
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3 {
+  color: #0f172a;
+}
+.markdown-body pre {
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 12px;
+  border-radius: 8px;
+  overflow: auto;
+}
+.muted { color: #94a3b8 }
 .example-tabs {
   display: flex;
   gap: 10px;
